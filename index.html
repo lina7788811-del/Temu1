@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Admin & Client Management Portal</title>
+    <style>
+        :root { --primary: #ff6b00; --bg: #f8f9fa; --card-bg: #ffffff; --border: #dee2e6; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 10px; color: #333; box-sizing: border-box; }
+        .container { max-width: 1100px; margin: 0 auto; background: var(--card-bg); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); overflow: hidden; border: 1px solid var(--border); }
+        header { background: #212529; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        header h2 { margin: 0; font-size: 1.2em; color: var(--primary); }
+        .auth-box { max-width: 400px; margin: 40px auto; padding: 25px; background: white; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: block; }
+        .input-field { width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; }
+        .btn { background: var(--primary); color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
+        .btn:hover { opacity: 0.9; }
+        
+        .admin-nav { display: flex; background: #343a40; overflow-x: auto; }
+        .admin-nav button { background: none; border: none; color: #adb5bd; padding: 12px 16px; cursor: pointer; font-weight: 600; white-space: nowrap; font-size: 0.9em; }
+        .admin-nav button.active, .admin-nav button:hover { color: white; background: var(--primary); }
+        
+        .section-content { display: none; padding: 20px; box-sizing: border-box; }
+        .section-content.active { display: block; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: var(--bg); padding: 15px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+        .stat-card h3 { margin: 0 0 5px 0; font-size: 0.9em; color: #6c757d; }
+        .stat-card span { font-size: 1.4em; font-weight: bold; color: var(--primary); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; font-size: 0.9em; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: #f8f9fa; color: #495057; }
+        
+        .big-task-container { border: 2px solid #dc3545; padding: 15px; border-radius: 8px; background: #fff; position: relative; margin-top: 10px; }
+        .small-top-box { position: absolute; top: 15px; right: 15px; background: #fff; border: 1.5px solid #dc3545; padding: 6px 12px; border-radius: 6px; display: flex; gap: 8px; align-items: center; }
+        .task-grid-30 { display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-top: 10px; }
+        .task-box { background: #f8f9fa; border: 1px solid var(--border); padding: 6px; text-align: center; border-radius: 4px; font-size: 0.75em; cursor: pointer; }
+        .task-box.has-combo { background: #ffe3d0; border-color: var(--primary); font-weight: bold; color: var(--primary); }
+        .client-task-card { background: #fdfdfd; border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 10px; width: 350px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
+    </style>
+</head>
+<body>
+
+    <!-- AUTHENTICATION SCREEN -->
+    <div id="authScreen" class="auth-box">
+        <h2 style="color:var(--primary);margin-top:0;text-align:center;">Portal Login</h2>
+        <input type="text" id="loginUser" class="input-field" placeholder="Username (admin / staff1)">
+        <input type="password" id="loginPass" class="input-field" placeholder="Password (123)">
+        <button class="btn" onclick="systemLogin()" style="width:100%;">Login Securely</button>
+        <div id="authError" style="color:red;font-size:0.85em;margin-top:10px;text-align:center;"></div>
+    </div>
+
+    <!-- MAIN ADMIN & STAFF PANEL -->
+    <div id="mainPortal" class="container" style="display:none;">
+        <header>
+            <h2 id="portalHeaderTitle">Admin & Staff Control Console</h2>
+            <button onclick="logoutSystem()" style="background:#dc3545;color:white;border:none;padding:6px 12px;border-radius:4px;cursor:pointer;font-size:0.85em;">Logout</button>
+        </header>
+
+        <div class="admin-nav" id="navTabsContainer">
+            <button class="active" onclick="switchTab('dashboard', this)">1. Dashboard</button>
+            <button onclick="switchTab('activeClients', this)">2. Active Clients & IP</button>
+            <button onclick="switchTab('deposits', this)">3. Deposits</button>
+            <button onclick="switchTab('withdraws', this)">4. Withdraws</button>
+            <button onclick="switchTab('staffMgmt', this)" id="navStaffBtn">5. Staff Users</button>
+            <button onclick="switchTab('taskMgmt', this)">6. 30-Tasks & Combos</button>
+            <button onclick="switchTab('settings', this)" id="navSettingsBtn">7. Admin Settings</button>
+        </div>
+
+        <div id="tab-dashboard" class="section-content active">
+            <h3>Overall System Overview</h3>
+            <div class="stats-grid">
+                <div class="stat-card"><h3>Total Registered Clients</h3><span id="statTotalClients">0</span></div>
+                <div class="stat-card"><h3>Total Deposit Amount</h3><span id="statTotalDeposit">$0.00</span></div>
+                <div class="stat-card"><h3>Total Withdraw Amount</h3><span id="statTotalWithdraw">$0.00</span></div>
+            </div>
+        </div>
+
+        <div id="tab-activeClients" class="section-content">
+            <h3>Active Clients Tracking</h3>
+            <table>
+                <thead><tr><th>Client Mobile</th><th>Online Duration</th><th>IP Address</th><th>Location</th><th>Status</th></tr></thead>
+                <tbody id="activeClientsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="tab-deposits" class="section-content">
+            <h3>Deposit Requests Management</h3>
+            <table>
+                <thead><tr><th>Client</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="depositsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="tab-withdraws" class="section-content">
+            <h3>Withdrawal Requests Management</h3>
+            <table>
+                <thead><tr><th>Client</th><th>Amount</th><th>Destination</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="withdrawsTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="tab-staffMgmt" class="section-content">
+            <h3>Staff Users Management</h3>
+            <div style="background:#f8f9fa;padding:15px;border-radius:8px;border:1px solid var(--border);margin-bottom:15px;">
+                <input type="text" id="newStaffUser" class="input-field" placeholder="Staff Username" style="margin-bottom:8px;">
+                <input type="password" id="newStaffPass" class="input-field" placeholder="Staff Password" style="margin-bottom:8px;">
+                <button class="btn" onclick="createStaffAccount()">Create Staff Member</button>
+            </div>
+            <table>
+                <thead><tr><th>Username</th><th>Role</th><th>Action</th></tr></thead>
+                <tbody id="staffTableBody"></tbody>
+            </table>
+        </div>
+
+        <div id="tab-taskMgmt" class="section-content">
+            <h3>Client Task Management & Custom Combo Assignment</h3>
+            <div class="big-task-container">
+                <div class="small-top-box">
+                    <span style="font-size:0.8em;font-weight:bold;color:#dc3545;">Reset All Tasks:</span>
+                    <button class="btn" style="background:#dc3545;padding:4px 8px;font-size:0.75em;" onclick="resetAllClientsTasks()">Reset</button>
+                </div>
+                <h4 style="margin-top:0;color:var(--primary);">All Clients Tasks Overview</h4>
+                <div id="allClientsTasksContainer" style="margin-top:15px;"></div>
+            </div>
+        </div>
+
+        <div id="tab-settings" class="section-content">
+            <h3>Main Admin Settings</h3>
+            <table>
+                <thead><tr><th>Mobile</th><th>Balance</th><th>Action</th></tr></thead>
+                <tbody id="adminClientCredTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="comboModal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="modalTitle" style="margin-top:0;color:var(--primary);">Configure Task Combo</h3>
+            <label>Enter Task Amount ($):</label>
+            <input type="number" id="modalInputAmount" class="input-field" placeholder="e.g., 500" oninput="calculateProfit()">
+            
+            <div style="background:#f8f9fa;padding:10px;border-radius:6px;margin-bottom:12px;border:1px solid var(--border);">
+                <p style="margin:0;font-size:0.85em;">Profit (20%): <strong id="modalProfitDisplay" style="color:green;">$0.00</strong></p>
+                <p style="margin:5px 0 0 0;font-size:0.9em;">Total Amount with Profit: <strong id="modalTotalDisplay" style="color:var(--primary);">$0.00</strong></p>
+            </div>
+
+            <div style="display:flex;gap:10px;">
+                <button class="btn" style="background:#28a745;flex:1;" onclick="saveTaskComboConfig()">Save Combo</button>
+                <button class="btn" style="background:#dc3545;flex:1;" onclick="closeComboModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let clientsData = [
+            { id: 1, mobile: "3001234567", balance: 1500, onlineTime: "2h 15m", ip: "110.39.21.5", location: "Lahore, PK", status: "Online", completedTasks: 0, tasks: Array(30).fill({isCombo: false, amount: 0}), deposits: [{id:101, amount:1500, status:"Approved"}], withdraws: [] },
+            { id: 2, mobile: "3219876543", balance: 850, onlineTime: "45m", ip: "203.124.55.12", location: "Karachi, PK", status: "Offline", completedTasks: 30, tasks: Array(30).fill({isCombo: false, amount: 0}), deposits: [{id:102, amount:850, status:"Pending"}], withdraws: [] }
+        ];
+
+        let staffData = [{ id: 1, username: "staff1", password: "123", role: "staff" }];
+        let adminAccount = { username: "admin", password: "123", role: "admin" };
+        let currentSession = null;
+        let activeModalClientIdx = null;
+        let activeModalTaskIdx = null;
+
+        function systemLogin() {
+            let u = document.getElementById("loginUser").value.trim();
+            let p = document.getElementById("loginPass").value.trim();
+            if(u === adminAccount.username && p === adminAccount.password) {
+                currentSession = { role: "admin" };
+                launchPortal();
+                return;
+            }
+            let staff = staffData.find(s => s.username === u && s.password === p);
+            if(staff) {
+                currentSession = staff;
+                launchPortal();
+                return;
+            }
+            document.getElementById("authError").innerText = "Invalid credentials!";
+        }
+
+        function logoutSystem() {
+            currentSession = null;
+            document.getElementById("mainPortal").style.display = "none";
+            document.getElementById("authScreen").style.display = "block";
+        }
+
+        function launchPortal() {
+            document.getElementById("authScreen").style.display = "none";
+            document.getElementById("mainPortal").style.display = "block";
+            if(currentSession.role === "staff") {
+                document.getElementById("portalHeaderTitle").innerText = "Staff Control Panel";
+                document.getElementById("navStaffBtn").style.display = "none";
+                document.getElementById("navSettingsBtn").style.display = "none";
+                switchTab('taskMgmt', document.querySelectorAll('.admin-nav button')[5]);
+            } else {
+                document.getElementById("portalHeaderTitle").innerText = "Main Admin Control Center";
+                document.getElementById("navStaffBtn").style.display = "block";
+                document.getElementById("navSettingsBtn").style.display = "block";
+                switchTab('dashboard', document.querySelectorAll('.admin-nav button')[0]);
+            }
+            refreshAllData();
+        }
+
+        function switchTab(tabId, btnElem) {
+            document.querySelectorAll('.section-content').forEach(s => s.classList.remove('active'));
+            document.getElementById('tab-' + tabId).classList.add('active');
+            if(btnElem) {
+                document.querySelectorAll('.admin-nav button').forEach(b => b.classList.remove('active'));
+                btnElem.classList.add('active');
+            }
+            if(tabId === 'taskMgmt') renderAllClientsTasks();
+        }
+
+        function refreshAllData() {
+            let totalDep = 0, totalWd = 0;
+            clientsData.forEach(c => {
+                c.deposits.forEach(d => { if(d.status === 'Approved') totalDep += d.amount; });
+                c.withdraws.forEach(w => { if(w.status === 'Approved') totalWd += w.amount; });
+            });
+            document.getElementById("statTotalClients").innerText = clientsData.length;
+            document.getElementById("statTotalDeposit").innerText = "$" + totalDep.toFixed(2);
+            document.getElementById("statTotalWithdraw").innerText = "$" + totalWd.toFixed(2);
+        }
+
+        function renderAllClientsTasks() {
+            let container = document.getElementById("allClientsTasksContainer");
+            container.innerHTML = "";
+            clientsData.forEach((c, idx) => {
+                let remaining = 30 - c.completedTasks;
+                let card = document.createElement("div");
+                card.className = "client-task-card";
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                        <div>
+                            <strong>Client Mobile: ${c.mobile}</strong><br>
+                            <span style="font-size:0.85em;color:#555;">Completed: <strong style="color:green;">${c.completedTasks}</strong> | Remaining: <strong style="color:#d9534f;">${remaining}</strong></span>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn" style="background:#ffc107;color:#333;padding:4px 8px;font-size:0.8em;" onclick="resetClientSingleTask(${idx})">Reset Tasks</button>
+                            <button class="btn" style="padding:4px 8px;font-size:0.8em;" onclick="toggleEditGrid(${idx})">Edit Tasks / Combo</button>
+                        </div>
+                    </div>
+                    <div id="grid-wrap-${idx}" class="task-grid-30" style="display:none;"></div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function toggleEditGrid(idx) {
+            let wrap = document.getElementById(`grid-wrap-${idx}`);
+            if(wrap.style.display === "grid") {
+                wrap.style.display = "none";
+                return;
+            }
+            wrap.style.display = "grid";
+            wrap.innerHTML = "";
+            for(let i = 0; i < 30; i++) {
+                let task = clientsData[idx].tasks[i];
+                let box = document.createElement("div");
+                box.className = `task-box ${task.isCombo ? 'has-combo' : ''}`;
+                box.innerHTML = `#${i+1}<br>${task.isCombo ? '$'+task.amount : 'Normal'}`;
+                box.onclick = () => openComboModal(idx, i);
+                wrap.appendChild(box);
+            }
+        }
+
+        function openComboModal(cIdx, tIdx) {
+            activeModalClientIdx = cIdx;
+            activeModalTaskIdx = tIdx;
+            let task = clientsData[cIdx].tasks[tIdx];
+            document.getElementById("modalTitle").innerText = `Task #${tIdx+1} for Client ${clientsData[cIdx].mobile}`;
+            document.getElementById("modalInputAmount").value = task.amount || "";
+            calculateProfit();
+            document.getElementById("comboModal").style.display = "flex";
+        }
+
+        function closeComboModal() {
+            document.getElementById("comboModal").style.display = "none";
+        }
+
+        function calculateProfit() {
+            let amt = parseFloat(document.getElementById("modalInputAmount").value) || 0;
+            let profit = amt * 0.20;
+            let total = amt + profit;
+            document.getElementById("modalProfitDisplay").innerText = "$" + profit.toFixed(2);
+            document.getElementById("modalTotalDisplay").innerText = "$" + total.toFixed(2);
+        }
+
+        function saveTaskComboConfig() {
+            let amt = parseFloat(document.getElementById("modalInputAmount").value) || 0;
+            if(amt <= 0) {
+                clientsData[activeModalClientIdx].tasks[activeModalTaskIdx] = { isCombo: false, amount: 0 };
+            } else {
+                clientsData[activeModalClientIdx].tasks[activeModalTaskIdx] = { isCombo: true, amount: amt };
+            }
+            closeComboModal();
+            toggleEditGrid(activeModalClientIdx);
+            toggleEditGrid(activeModalClientIdx);
+        }
+
+        function resetClientSingleTask(idx) {
+            clientsData[idx].completedTasks = 0;
+            clientsData[idx].tasks = Array(30).fill({isCombo: false, amount: 0});
+            renderAllClientsTasks();
+            alert(`Client ${clientsData[idx].mobile} tasks reset!`);
+        }
+
+        function resetAllClientsTasks() {
+            clientsData.forEach(c => {
+                c.completedTasks = 0;
+                c.tasks = Array(30).fill({isCombo: false, amount: 0});
+            });
+            renderAllClientsTasks();
+            alert("All clients tasks reset successfully!");
+        }
+
+        function createStaffAccount() {
+            let u = document.getElementById("newStaffUser").value.trim();
+            let p = document.getElementById("newStaffPass").value.trim();
+            if(!u || !p) return;
+            staffData.push({ id: Date.now(), username: u, password: p, role: "staff" });
+            alert("Staff created!");
+        }
+    </script>
+</body>
+</html>
